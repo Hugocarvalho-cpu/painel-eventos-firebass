@@ -5,153 +5,232 @@
   <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
   <style>
-    body { font-family: Arial, sans-serif; max-width: 600px; margin: auto; }
-    #adminPanel, #loginPanel { display: none; }
+    body {
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      max-width: 600px;
+      margin: 40px auto;
+      background-color: #f9f8fc;
+      color: #2c2c2c;
+      padding: 20px;
+      border-radius: 12px;
+      box-shadow: 0 6px 20px rgba(100, 88, 204, 0.15);
+    }
+
+    h1, h2 {
+      color: #5e4b8b;
+      font-weight: 600;
+      margin-bottom: 16px;
+    }
+
+    label {
+      font-weight: 600;
+      color: #4a3d7f;
+    }
+
+    input, select {
+      width: 100%;
+      max-width: 320px;
+      padding: 10px 14px;
+      margin-top: 6px;
+      margin-bottom: 16px;
+      border: 1.8px solid #6e57d5;
+      border-radius: 8px;
+      font-size: 16px;
+      font-weight: 500;
+      color: #3a2f6b;
+      background-color: #f1efff;
+      transition: border-color 0.3s ease, background-color 0.3s ease;
+      box-sizing: border-box;
+    }
+
+    input:focus, select:focus {
+      outline: none;
+      border-color: #473e8a;
+      background-color: #e5e1ff;
+    }
+
+    button {
+      background-color: #6e57d5;
+      color: white;
+      font-weight: 600;
+      border: none;
+      border-radius: 8px;
+      padding: 12px 24px;
+      cursor: pointer;
+      font-size: 16px;
+      transition: background-color 0.3s ease;
+      margin-right: 10px;
+      margin-top: 8px;
+    }
+
+    button:hover {
+      background-color: #5e4b8b;
+    }
+
+    #adminPanel, #loginPanel, #userPanel {
+      transition: opacity 0.3s ease;
+    }
+
+    .hidden {
+      opacity: 0;
+      pointer-events: none;
+      height: 0;
+      overflow: hidden;
+    }
+
+    .visible {
+      opacity: 1;
+      pointer-events: auto;
+      height: auto;
+    }
   </style>
 </head>
 <body>
+  <h1>Painel de Eventos</h1>
+  <div id="userPanel" class="visible">
+    <h2>Reservar Evento</h2>
+    <label>Seu Nick:
+      <input type="text" id="nickInput" placeholder="Digite seu nick">
+    </label><br>
+    <label>Eventos Disponíveis:</label><br>
+    <select id="eventSelect"></select><br>
+    <button onclick="reserveEvent()">Reservar</button>
+    <button onclick="showLogin()">Login Admin</button>
+  </div>
 
-<h1>Painel de Eventos</h1>
+  <div id="loginPanel" class="hidden">
+    <h2>Login Admin</h2>
+    <label>Usuário:
+      <input type="text" id="adminUser" placeholder="Digite o usuário">
+    </label><br>
+    <label>Senha:
+      <input type="password" id="adminPass" placeholder="Digite a senha">
+    </label><br>
+    <button onclick="loginAdmin()">Entrar</button>
+    <button onclick="showUserPanel()">Cancelar</button>
+  </div>
 
-<div id="userPanel">
-  <h2>Reservar Evento</h2>
-  <label>Seu Nick: <input type="text" id="nickInput"></label><br><br>
-  <label>Eventos Disponíveis:</label><br>
-  <select id="eventSelect"></select><br><br>
-  <button onclick="reserveEvent()">Reservar</button>
-  <button onclick="showLogin()">Login Admin</button>
-</div>
+  <div id="adminPanel" class="hidden">
+    <h2>Painel Admin</h2>
+    <label>Adicionar Evento:
+      <input type="text" id="newEvent" placeholder="Nome do novo evento">
+    </label>
+    <button onclick="addEvent()">Adicionar</button><br>
+    <button onclick="resetAll()">Resetar Tudo</button><br><br>
+    <button onclick="logoutAdmin()">Logout</button>
+  </div>
 
-<div id="loginPanel">
-  <h2>Login Admin</h2>
-  <label>Usuário: <input type="text" id="adminUser"></label><br><br>
-  <label>Senha: <input type="password" id="adminPass"></label><br><br>
-  <button onclick="loginAdmin()">Entrar</button>
-  <button onclick="showUserPanel()">Cancelar</button>
-</div>
+  <script>
+    // Firebase já configurado com seu projeto
+    const firebaseConfig = {
+      apiKey: "AIzaSyA7R1solmwmOAbHCs2kWpMgDH05s4H-5e8",
+      authDomain: "paineleventos-eb268.firebaseapp.com",
+      databaseURL: "https://paineleventos-eb268-default-rtdb.firebaseio.com",
+      projectId: "paineleventos-eb268",
+      storageBucket: "paineleventos-eb268.appspot.com",
+      messagingSenderId: "1058039759873",
+      appId: "1:1058039759873:web:2b504e42531517be60ec00"
+    };
+    firebase.initializeApp(firebaseConfig);
+    const db = firebase.database();
 
-<div id="adminPanel">
-  <h2>Painel Admin</h2>
-  <label>Adicionar Evento: <input type="text" id="newEvent"></label>
-  <button onclick="addEvent()">Adicionar</button><br><br>
+    let isAdmin = false;
 
-  <button onclick="resetAll()">Resetar Tudo</button><br><br>
+    // Usuário e senha de administrador
+    const adminUser = "admin";
+    const adminPass = "hugocom13@";
 
-  <button onclick="logoutAdmin()">Logout</button>
-</div>
-
-<script>
-  // Firebase já configurado com seu projeto
-  const firebaseConfig = {
-    apiKey: "AIzaSyA7R1solmwmOAbHCs2kWpMgDH05s4H-5e8",
-    authDomain: "paineleventos-eb268.firebaseapp.com",
-    databaseURL: "https://paineleventos-eb268-default-rtdb.firebaseio.com",
-    projectId: "paineleventos-eb268",
-    storageBucket: "paineleventos-eb268.appspot.com",
-    messagingSenderId: "1058039759873",
-    appId: "1:1058039759873:web:2b504e42531517be60ec00"
-  };
-  firebase.initializeApp(firebaseConfig);
-  const db = firebase.database();
-
-  let isAdmin = false;
-
-  // Usuário e senha de administrador
-  const adminUser = "admin";
-  const adminPass = "hugocom13@";
-
-  function showLogin() {
-    document.getElementById('userPanel').style.display = 'none';
-    document.getElementById('loginPanel').style.display = 'block';
-    document.getElementById('adminPanel').style.display = 'none';
-  }
-  function showUserPanel() {
-    document.getElementById('userPanel').style.display = 'block';
-    document.getElementById('loginPanel').style.display = 'none';
-    document.getElementById('adminPanel').style.display = 'none';
-  }
-  function showAdminPanel() {
-    document.getElementById('userPanel').style.display = 'none';
-    document.getElementById('loginPanel').style.display = 'none';
-    document.getElementById('adminPanel').style.display = 'block';
-    loadEvents();
-  }
-
-  function loginAdmin() {
-    const user = document.getElementById('adminUser').value;
-    const pass = document.getElementById('adminPass').value;
-    if(user === adminUser && pass === adminPass) {
-      isAdmin = true;
-      showAdminPanel();
-    } else {
-      alert("Usuário ou senha incorretos!");
+    function showLogin() {
+      document.getElementById('userPanel').classList.replace('visible', 'hidden');
+      document.getElementById('loginPanel').classList.replace('hidden', 'visible');
+      document.getElementById('adminPanel').classList.replace('visible', 'hidden');
     }
-  }
-
-  function logoutAdmin() {
-    isAdmin = false;
-    showUserPanel();
-  }
-
-  function loadEvents() {
-    const select = document.getElementById('eventSelect');
-    const adminEvents = document.getElementById('newEvent');
-    select.innerHTML = '';
-    adminEvents.value = '';
-    db.ref('events').once('value').then(snapshot => {
-      const events = snapshot.val() || {};
-      for(let key in events) {
-        const option = document.createElement('option');
-        option.value = key;
-        option.text = events[key].name + (events[key].reservedBy ? " (Reservado por " + events[key].reservedBy + ")" : "");
-        select.appendChild(option);
-      }
-    });
-  }
-
-  function addEvent() {
-    if(!isAdmin) return alert("Você precisa estar logado como admin!");
-    const name = document.getElementById('newEvent').value.trim();
-    if(!name) return alert("Digite um nome de evento!");
-    const newKey = db.ref('events').push().key;
-    db.ref('events/' + newKey).set({name: name, reservedBy: null}).then(() => {
-      alert("Evento adicionado!");
+    function showUserPanel() {
+      document.getElementById('userPanel').classList.replace('hidden', 'visible');
+      document.getElementById('loginPanel').classList.replace('visible', 'hidden');
+      document.getElementById('adminPanel').classList.replace('visible', 'hidden');
+    }
+    function showAdminPanel() {
+      document.getElementById('userPanel').classList.replace('visible', 'hidden');
+      document.getElementById('loginPanel').classList.replace('visible', 'hidden');
+      document.getElementById('adminPanel').classList.replace('hidden', 'visible');
       loadEvents();
-    });
-  }
+    }
 
-  function reserveEvent() {
-    const nick = document.getElementById('nickInput').value.trim();
-    const eventKey = document.getElementById('eventSelect').value;
-    if(!nick) return alert("Digite seu nick!");
-    if(!eventKey) return alert("Selecione um evento!");
-    db.ref('events/' + eventKey).once('value').then(snapshot => {
-      const event = snapshot.val();
-      if(event.reservedBy) {
-        alert("Evento já reservado!");
+    function loginAdmin() {
+      const user = document.getElementById('adminUser').value;
+      const pass = document.getElementById('adminPass').value;
+      if(user === adminUser && pass === adminPass) {
+        isAdmin = true;
+        showAdminPanel();
       } else {
-        db.ref('events/' + eventKey + '/reservedBy').set(nick).then(() => {
-          alert("Evento reservado com sucesso!");
-          loadEvents();
-        });
+        alert("Usuário ou senha incorretos!");
       }
-    });
-  }
+    }
 
-  function resetAll() {
-    if(!isAdmin) return alert("Você precisa estar logado como admin!");
-    if(confirm("Tem certeza que quer resetar tudo? Isso apagará todos os eventos e reservas.")) {
-      db.ref('events').remove().then(() => {
-        alert("Reset realizado com sucesso!");
+    function logoutAdmin() {
+      isAdmin = false;
+      showUserPanel();
+    }
+
+    function loadEvents() {
+      const select = document.getElementById('eventSelect');
+      const adminEvents = document.getElementById('newEvent');
+      select.innerHTML = '';
+      adminEvents.value = '';
+      db.ref('events').once('value').then(snapshot => {
+        const events = snapshot.val() || {};
+        for(let key in events) {
+          const option = document.createElement('option');
+          option.value = key;
+          option.text = events[key].name + (events[key].reservedBy ? " (Reservado por " + events[key].reservedBy + ")" : "");
+          select.appendChild(option);
+        }
+      });
+    }
+
+    function addEvent() {
+      if(!isAdmin) return alert("Você precisa estar logado como admin!");
+      const name = document.getElementById('newEvent').value.trim();
+      if(!name) return alert("Digite um nome de evento!");
+      const newKey = db.ref('events').push().key;
+      db.ref('events/' + newKey).set({name: name, reservedBy: null}).then(() => {
+        alert("Evento adicionado!");
         loadEvents();
       });
     }
-  }
 
-  // Inicialização
-  showUserPanel();
-  loadEvents();
-</script>
+    function reserveEvent() {
+      const nick = document.getElementById('nickInput').value.trim();
+      const eventKey = document.getElementById('eventSelect').value;
+      if(!nick) return alert("Digite seu nick!");
+      if(!eventKey) return alert("Selecione um evento!");
+      db.ref('events/' + eventKey).once('value').then(snapshot => {
+        const event = snapshot.val();
+        if(event.reservedBy) {
+          alert("Evento já reservado!");
+        } else {
+          db.ref('events/' + eventKey + '/reservedBy').set(nick).then(() => {
+            alert("Evento reservado com sucesso!");
+            loadEvents();
+          });
+        }
+      });
+    }
 
+    function resetAll() {
+      if(!isAdmin) return alert("Você precisa estar logado como admin!");
+      if(confirm("Tem certeza que quer resetar tudo? Isso apagará todos os eventos e reservas.")) {
+        db.ref('events').remove().then(() => {
+          alert("Reset realizado com sucesso!");
+          loadEvents();
+        });
+      }
+    }
+
+    // Inicialização
+    showUserPanel();
+    loadEvents();
+  </script>
 </body>
 </html>
