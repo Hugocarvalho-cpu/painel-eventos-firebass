@@ -1,46 +1,47 @@
 <!DOCTYPE html>
-<html lang="pt-BR">
+<html>
 <head>
-  <meta charset="UTF-8" />
   <title>Painel de Eventos</title>
-  <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-app-compat.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-database-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
   <style>
-    body { font-family: Arial, sans-serif; margin: 20px; }
-    #login, #adminPanel, #userPanel { margin-top: 20px; }
-    #eventList button { margin-left: 10px; }
-    #resetBtn { margin-top: 20px; }
+    body { font-family: Arial, sans-serif; max-width: 600px; margin: auto; }
+    #adminPanel, #loginPanel { display: none; }
   </style>
 </head>
 <body>
 
-  <h1>Painel de Eventos</h1>
+<h1>Painel de Eventos</h1>
 
-  <div id="login">
-    <label>Senha Admin: <input type="password" id="adminPass" /></label>
-    <button id="btnLogin">Entrar como Admin</button>
-  </div>
+<div id="userPanel">
+  <h2>Reservar Evento</h2>
+  <label>Seu Nick: <input type="text" id="nickInput"></label><br><br>
+  <label>Eventos Disponíveis:</label><br>
+  <select id="eventSelect"></select><br><br>
+  <button onclick="reserveEvent()">Reservar</button>
+  <button onclick="showLogin()">Login Admin</button>
+</div>
 
-  <div id="adminPanel" style="display:none;">
-    <h2>Adicionar Evento</h2>
-    <input type="text" id="newEventName" placeholder="Nome do evento" />
-    <button id="btnAddEvent">Adicionar Evento</button>
+<div id="loginPanel">
+  <h2>Login Admin</h2>
+  <label>Usuário: <input type="text" id="adminUser"></label><br><br>
+  <label>Senha: <input type="password" id="adminPass"></label><br><br>
+  <button onclick="loginAdmin()">Entrar</button>
+  <button onclick="showUserPanel()">Cancelar</button>
+</div>
 
-    <h3>Eventos Cadastrados:</h3>
-    <ul id="eventList"></ul>
+<div id="adminPanel">
+  <h2>Painel Admin</h2>
+  <label>Adicionar Evento: <input type="text" id="newEvent"></label>
+  <button onclick="addEvent()">Adicionar</button><br><br>
 
-    <button id="resetBtn">Resetar Todos Eventos</button>
-  </div>
+  <button onclick="resetAll()">Resetar Tudo</button><br><br>
 
-  <div id="userPanel" style="display:none;">
-    <h2>Reservar Evento</h2>
-    <label>Seu Nick: <input type="text" id="nick" /></label>
-    <h3>Eventos Disponíveis:</h3>
-    <ul id="eventListUser"></ul>
-  </div>
+  <button onclick="logoutAdmin()">Logout</button>
+</div>
 
 <script>
-  // Configuração do Firebase
+  // Firebase já configurado com seu projeto
   const firebaseConfig = {
     apiKey: "AIzaSyA7R1solmwmOAbHCs2kWpMgDH05s4H-5e8",
     authDomain: "paineleventos-eb268.firebaseapp.com",
@@ -50,114 +51,107 @@
     messagingSenderId: "1058039759873",
     appId: "1:1058039759873:web:2b504e42531517be60ec00"
   };
-
-  // Inicializa Firebase
   firebase.initializeApp(firebaseConfig);
   const db = firebase.database();
 
-  // Elementos
-  const loginDiv = document.getElementById('login');
-  const adminPanel = document.getElementById('adminPanel');
-  const userPanel = document.getElementById('userPanel');
-  const btnLogin = document.getElementById('btnLogin');
-  const adminPassInput = document.getElementById('adminPass');
-  const newEventNameInput = document.getElementById('newEventName');
-  const btnAddEvent = document.getElementById('btnAddEvent');
-  const eventList = document.getElementById('eventList');
-  const eventListUser = document.getElementById('eventListUser');
-  const resetBtn = document.getElementById('resetBtn');
-  const nickInput = document.getElementById('nick');
-
   let isAdmin = false;
 
-  // Login Admin
-  btnLogin.onclick = () => {
-    if(adminPassInput.value === 'hugo.com13@') {
+  // Usuário e senha de administrador
+  const adminUser = "admin";
+  const adminPass = "hugocom13@";
+
+  function showLogin() {
+    document.getElementById('userPanel').style.display = 'none';
+    document.getElementById('loginPanel').style.display = 'block';
+    document.getElementById('adminPanel').style.display = 'none';
+  }
+  function showUserPanel() {
+    document.getElementById('userPanel').style.display = 'block';
+    document.getElementById('loginPanel').style.display = 'none';
+    document.getElementById('adminPanel').style.display = 'none';
+  }
+  function showAdminPanel() {
+    document.getElementById('userPanel').style.display = 'none';
+    document.getElementById('loginPanel').style.display = 'none';
+    document.getElementById('adminPanel').style.display = 'block';
+    loadEvents();
+  }
+
+  function loginAdmin() {
+    const user = document.getElementById('adminUser').value;
+    const pass = document.getElementById('adminPass').value;
+    if(user === adminUser && pass === adminPass) {
       isAdmin = true;
-      loginDiv.style.display = 'none';
-      adminPanel.style.display = 'block';
-      userPanel.style.display = 'none';
-      loadEvents();
+      showAdminPanel();
     } else {
-      alert('Senha incorreta');
+      alert("Usuário ou senha incorretos!");
     }
-  };
+  }
 
-  // Mostrar painel usuário se não admin
-  loginDiv.style.display = 'none';
-  adminPanel.style.display = 'none';
-  userPanel.style.display = 'block';
-  loadEvents();
+  function logoutAdmin() {
+    isAdmin = false;
+    showUserPanel();
+  }
 
-  // Carregar eventos (para ambos)
   function loadEvents() {
-    eventList.innerHTML = '';
-    eventListUser.innerHTML = '';
-    db.ref('events').on('value', snapshot => {
-      eventList.innerHTML = '';
-      eventListUser.innerHTML = '';
-      const events = snapshot.val();
-      if(events) {
-        Object.entries(events).forEach(([key, event]) => {
-          // Para admin: mostrar nome e quem reservou
-          if(isAdmin) {
-            const li = document.createElement('li');
-            li.textContent = event.name + (event.reservedBy ? ' - Reservado por: ' + event.reservedBy : ' - Livre');
-            eventList.appendChild(li);
-          }
-          // Para usuário: mostrar botão reservar só se não reservado
-          if(!isAdmin) {
-            const li = document.createElement('li');
-            li.textContent = event.name;
-            if(!event.reservedBy) {
-              const btnReserve = document.createElement('button');
-              btnReserve.textContent = 'Reservar';
-              btnReserve.onclick = () => {
-                const nick = nickInput.value.trim();
-                if(!nick) {
-                  alert('Digite seu nick antes de reservar!');
-                  return;
-                }
-                // Atualizar no Firebase
-                db.ref('events/' + key).once('value').then(snap => {
-                  const ev = snap.val();
-                  if(ev.reservedBy) {
-                    alert('Evento já reservado por ' + ev.reservedBy);
-                  } else {
-                    db.ref('events/' + key).update({ reservedBy: nick });
-                  }
-                });
-              };
-              li.appendChild(btnReserve);
-            } else {
-              li.textContent += ' - Reservado por: ' + event.reservedBy;
-            }
-            eventListUser.appendChild(li);
-          }
+    const select = document.getElementById('eventSelect');
+    const adminEvents = document.getElementById('newEvent');
+    select.innerHTML = '';
+    adminEvents.value = '';
+    db.ref('events').once('value').then(snapshot => {
+      const events = snapshot.val() || {};
+      for(let key in events) {
+        const option = document.createElement('option');
+        option.value = key;
+        option.text = events[key].name + (events[key].reservedBy ? " (Reservado por " + events[key].reservedBy + ")" : "");
+        select.appendChild(option);
+      }
+    });
+  }
+
+  function addEvent() {
+    if(!isAdmin) return alert("Você precisa estar logado como admin!");
+    const name = document.getElementById('newEvent').value.trim();
+    if(!name) return alert("Digite um nome de evento!");
+    const newKey = db.ref('events').push().key;
+    db.ref('events/' + newKey).set({name: name, reservedBy: null}).then(() => {
+      alert("Evento adicionado!");
+      loadEvents();
+    });
+  }
+
+  function reserveEvent() {
+    const nick = document.getElementById('nickInput').value.trim();
+    const eventKey = document.getElementById('eventSelect').value;
+    if(!nick) return alert("Digite seu nick!");
+    if(!eventKey) return alert("Selecione um evento!");
+    db.ref('events/' + eventKey).once('value').then(snapshot => {
+      const event = snapshot.val();
+      if(event.reservedBy) {
+        alert("Evento já reservado!");
+      } else {
+        db.ref('events/' + eventKey + '/reservedBy').set(nick).then(() => {
+          alert("Evento reservado com sucesso!");
+          loadEvents();
         });
       }
     });
   }
 
-  // Adicionar evento (só admin)
-  btnAddEvent.onclick = () => {
-    const nome = newEventNameInput.value.trim();
-    if(nome) {
-      db.ref('events').push({ name: nome }).then(() => {
-        newEventNameInput.value = '';
+  function resetAll() {
+    if(!isAdmin) return alert("Você precisa estar logado como admin!");
+    if(confirm("Tem certeza que quer resetar tudo? Isso apagará todos os eventos e reservas.")) {
+      db.ref('events').remove().then(() => {
+        alert("Reset realizado com sucesso!");
+        loadEvents();
       });
-    } else {
-      alert('Digite um nome para o evento');
     }
-  };
+  }
 
-  // Resetar eventos (só admin)
-  resetBtn.onclick = () => {
-    if(confirm('Tem certeza que quer resetar todos os eventos?')) {
-      db.ref('events').remove();
-    }
-  };
+  // Inicialização
+  showUserPanel();
+  loadEvents();
 </script>
 
 </body>
-    </html>
+</html>
