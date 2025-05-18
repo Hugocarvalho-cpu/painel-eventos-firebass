@@ -4,206 +4,218 @@
   <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
   <style>
-    body { font-family: Arial, sans-serif; max-width: 600px; margin: auto; background-color: #f3f0f7; color: #333; }
-    h1, h2 { color: #6a0dad; }
-    input, select, button { margin: 5px 0; padding: 8px; border: 1px solid #ccc; border-radius: 5px; width: 100%; }
-    button { background-color: #6a0dad; color: white; border: none; cursor: pointer; }
-    button:hover { background-color: #581b9a; }
+    body { font-family: Arial, sans-serif; max-width: 600px; margin: auto; background-color: #f4f0fa; color: #333; }
+    h1, h2 { color: #5e2b97; }
+    label, input, select, button, textarea { display: block; width: 100%; margin-bottom: 10px; }
+    input, select, textarea { padding: 8px; border-radius: 6px; border: 1px solid #ccc; }
+    button { padding: 10px; background-color: #5e2b97; color: #fff; border: none; border-radius: 6px; cursor: pointer; }
+    button:hover { background-color: #4a237a; }
     #adminPanel, #loginPanel { display: none; }
-    .log-entry { font-size: 0.9em; border-bottom: 1px solid #ccc; padding: 5px 0; }
+    .log { background: #eee; padding: 5px; border-radius: 5px; margin-bottom: 5px; }
   </style>
 </head>
 <body>
-<h1>Painel de Eventos</h1>
-<div id="userPanel">
-  <h2>Reservar Evento</h2>
-  <label>Seu Nick: <input type="text" id="nickInput"></label><br><br>
-  <label>Eventos Disponíveis:</label><br>
-  <select id="eventSelect"></select><br><br>
-  <button onclick="reserveEvent()">Reservar</button>
-  <button onclick="showLogin()">Login Admin</button>
-</div><div id="loginPanel">
-  <h2>Login Admin</h2>
-  <label>Usuário: <input type="text" id="adminUser"></label><br><br>
-  <label>Senha: <input type="password" id="adminPass"></label><br><br>
-  <button onclick="loginAdmin()">Entrar</button>
-  <button onclick="showUserPanel()">Cancelar</button>
-</div><div id="adminPanel">
-  <h2>Painel Admin</h2>
-  <label>Adicionar Evento: <input type="text" id="newEvent"></label>
-  <button onclick="addEvent()">Adicionar</button><br><br><label>Eventos:</label> <select id="eventAdminSelect"></select><br> <button onclick="removeEvent()">Remover Evento</button> <button onclick="unreserveEvent()">Retirar Reserva</button> <button onclick="renameEvent()">Renomear Evento</button> <button onclick="toggleBlockEvent()">Bloquear/Desbloquear Evento</button><br><br>
+  <h1>Painel de Eventos</h1>  <div id="userPanel">
+    <h2>Reservar Evento</h2>
+    <label>Seu Nick: <input type="text" id="nickInput"></label>
+    <label>Eventos Disponíveis:</label>
+    <select id="eventSelect"></select>
+    <button onclick="reserveEvent()">Reservar</button><h3>Sugerir Evento</h3>
+<label>Nome do Evento: <input type="text" id="suggestInput"></label>
+<button onclick="suggestEvent()">Sugerir</button>
 
-<button onclick="resetAll()">Resetar Tudo</button> <button onclick="resetLogs()">Resetar Logs</button> <button onclick="toggleGlobalBlock()">Bloquear/Desbloquear Reservas</button><br><br>
+<button onclick="showLogin()">Login Admin</button>
 
+  </div>  <div id="loginPanel">
+    <h2>Login Admin</h2>
+    <label>Usuário: <input type="text" id="adminUser"></label>
+    <label>Senha: <input type="password" id="adminPass"></label>
+    <button onclick="loginAdmin()">Entrar</button>
+    <button onclick="showUserPanel()">Cancelar</button>
+  </div>  <div id="adminPanel">
+    <h2>Painel Admin</h2>
+    <label>Adicionar Evento: <input type="text" id="newEvent"></label>
+    <button onclick="addEvent()">Adicionar</button>
+    <button onclick="resetAll()">Resetar Tudo</button>
+    <button onclick="resetReservations()">Resetar Reservas</button><h3>Editar Reserva</h3>
+<label>ID do Evento: <input type="text" id="editId"></label>
+<label>Novo Nick: <input type="text" id="editNick"></label>
+<button onclick="editNick()">Alterar Nick</button>
+
+<h3>Gerenciar Eventos</h3>
+<label>ID para excluir: <input type="text" id="deleteId"></label>
+<button onclick="deleteEvent()">Excluir</button>
+<label>ID para desbloquear: <input type="text" id="unlockId"></label>
+<button onclick="unlockEvent()">Desbloquear Evento</button>
+
+<h3>Logs de Reservas</h3>
+<div id="logs"></div>
+
+<h3>Logs de Sugestões</h3>
+<div id="suggestions"></div>
+
+<button onclick="clearLogs()">Limpar Logs</button>
 <button onclick="logoutAdmin()">Logout</button>
 
-  <h3>Logs de Reservas</h3>
-  <div id="logContainer"></div>
-</div><script>
-  const firebaseConfig = {
-    apiKey: "AIzaSyA7R1solmwmOAbHCs2kWpMgDH05s4H-5e8",
-    authDomain: "paineleventos-eb268.firebaseapp.com",
-    databaseURL: "https://paineleventos-eb268-default-rtdb.firebaseio.com",
-    projectId: "paineleventos-eb268",
-    storageBucket: "paineleventos-eb268.appspot.com",
-    messagingSenderId: "1058039759873",
-    appId: "1:1058039759873:web:2b504e42531517be60ec00"
-  };
-  firebase.initializeApp(firebaseConfig);
-  const db = firebase.database();
+  </div>  <script>
+    const firebaseConfig = {
+      apiKey: "AIzaSyA7R1solmwmOAbHCs2kWpMgDH05s4H-5e8",
+      authDomain: "paineleventos-eb268.firebaseapp.com",
+      databaseURL: "https://paineleventos-eb268-default-rtdb.firebaseio.com",
+      projectId: "paineleventos-eb268",
+      storageBucket: "paineleventos-eb268.appspot.com",
+      messagingSenderId: "1058039759873",
+      appId: "1:1058039759873:web:2b504e42531517be60ec00"
+    };
+    firebase.initializeApp(firebaseConfig);
+    const db = firebase.database();
+    let isAdmin = false;
+    const adminUser = "admin";
+    const adminPass = "adm11";
 
-  let isAdmin = false;
-  const adminUser = "admin";
-  const adminPass = "adm11";
-
-  function showLogin() {
-    document.getElementById('userPanel').style.display = 'none';
-    document.getElementById('loginPanel').style.display = 'block';
-    document.getElementById('adminPanel').style.display = 'none';
-  }
-
-  function showUserPanel() {
-    document.getElementById('userPanel').style.display = 'block';
-    document.getElementById('loginPanel').style.display = 'none';
-    document.getElementById('adminPanel').style.display = 'none';
-  }
-
-  function showAdminPanel() {
-    document.getElementById('userPanel').style.display = 'none';
-    document.getElementById('loginPanel').style.display = 'none';
-    document.getElementById('adminPanel').style.display = 'block';
-    loadEvents();
-    loadLogs();
-  }
-
-  function loginAdmin() {
-    const user = document.getElementById('adminUser').value;
-    const pass = document.getElementById('adminPass').value;
-    if(user === adminUser && pass === adminPass) {
-      isAdmin = true;
-      showAdminPanel();
-    } else {
-      alert("Usuário ou senha incorretos!");
+    function showLogin() {
+      document.getElementById('userPanel').style.display = 'none';
+      document.getElementById('loginPanel').style.display = 'block';
+      document.getElementById('adminPanel').style.display = 'none';
     }
-  }
-
-  function logoutAdmin() {
-    isAdmin = false;
-    showUserPanel();
-  }
-
-  function loadEvents() {
-    const select = document.getElementById('eventSelect');
-    const adminSelect = document.getElementById('eventAdminSelect');
-    select.innerHTML = '';
-    adminSelect.innerHTML = '';
-    db.ref('events').once('value').then(snapshot => {
-      const events = snapshot.val() || {};
-      for(let key in events) {
-        const e = events[key];
-        const text = e.name + (e.reservedBy ? ` (Reservado por ${e.reservedBy})` : '') + (e.blocked ? " [BLOQUEADO]" : "");
-        const option1 = new Option(text, key);
-        const option2 = new Option(text, key);
-        select.appendChild(option1);
-        adminSelect.appendChild(option2);
-      }
-    });
-  }
-
-  function addEvent() {
-    if(!isAdmin) return;
-    const name = document.getElementById('newEvent').value.trim();
-    if(!name) return alert("Digite um nome de evento!");
-    const newKey = db.ref('events').push().key;
-    db.ref('events/' + newKey).set({name, reservedBy: null, blocked: false}).then(() => {
-      alert("Evento adicionado!");
+    function showUserPanel() {
+      document.getElementById('userPanel').style.display = 'block';
+      document.getElementById('loginPanel').style.display = 'none';
+      document.getElementById('adminPanel').style.display = 'none';
+    }
+    function showAdminPanel() {
+      document.getElementById('userPanel').style.display = 'none';
+      document.getElementById('loginPanel').style.display = 'none';
+      document.getElementById('adminPanel').style.display = 'block';
       loadEvents();
-    });
-  }
+      loadLogs();
+      loadSuggestions();
+    }
 
-  function removeEvent() {
-    const key = document.getElementById('eventAdminSelect').value;
-    db.ref('events/' + key).remove().then(loadEvents);
-  }
+    function loginAdmin() {
+      const user = document.getElementById('adminUser').value;
+      const pass = document.getElementById('adminPass').value;
+      if(user === adminUser && pass === adminPass) {
+        isAdmin = true;
+        showAdminPanel();
+      } else alert("Usuário ou senha incorretos!");
+    }
+    function logoutAdmin() {
+      isAdmin = false;
+      showUserPanel();
+    }
 
-  function unreserveEvent() {
-    const key = document.getElementById('eventAdminSelect').value;
-    db.ref('events/' + key + '/reservedBy').remove().then(loadEvents);
-  }
+    function loadEvents() {
+      const select = document.getElementById('eventSelect');
+      select.innerHTML = '';
+      db.ref('events').once('value').then(snapshot => {
+        const events = snapshot.val() || {};
+        for(let key in events) {
+          const event = events[key];
+          const option = document.createElement('option');
+          option.value = key;
+          option.text = event.name + (event.reservedBy ? ` (Reservado por ${event.reservedBy})` : '') + (event.blocked ? " [Bloqueado]" : "");
+          if (!event.blocked) select.appendChild(option);
+        }
+      });
+    }
 
-  function renameEvent() {
-    const key = document.getElementById('eventAdminSelect').value;
-    const newName = prompt("Novo nome do evento:");
-    if(newName) db.ref('events/' + key + '/name').set(newName).then(loadEvents);
-  }
+    function addEvent() {
+      const name = document.getElementById('newEvent').value.trim();
+      if(!name) return alert("Digite um nome!");
+      db.ref('events').once('value').then(snapshot => {
+        const events = snapshot.val() || {};
+        for (let key in events) {
+          if(events[key].name.toLowerCase() === name.toLowerCase()) return alert("Evento já existe!");
+        }
+        const newKey = db.ref('events').push().key;
+        db.ref('events/' + newKey).set({name: name, reservedBy: null, blocked: false}).then(() => {
+          alert("Evento adicionado!");
+          loadEvents();
+        });
+      });
+    }
 
-  function toggleBlockEvent() {
-    const key = document.getElementById('eventAdminSelect').value;
-    db.ref('events/' + key).once('value').then(snap => {
-      const val = snap.val();
-      db.ref('events/' + key + '/blocked').set(!val.blocked).then(loadEvents);
-    });
-  }
-
-  function reserveEvent() {
-    const nick = document.getElementById('nickInput').value.trim();
-    const eventKey = document.getElementById('eventSelect').value;
-    if(!nick || !eventKey) return alert("Preencha os campos corretamente!");
-
-    db.ref('blockAll').once('value').then(globalSnap => {
-      if(globalSnap.val()) return alert("Reservas estão bloqueadas no momento!");
-
+    function reserveEvent() {
+      const nick = document.getElementById('nickInput').value.trim();
+      const eventKey = document.getElementById('eventSelect').value;
+      if(!nick || !eventKey) return alert("Complete todos os campos!");
       db.ref('events/' + eventKey).once('value').then(snapshot => {
         const event = snapshot.val();
         if(event.reservedBy) return alert("Evento já reservado!");
-        if(event.blocked) return alert("Este evento está bloqueado!");
-
-        db.ref('events/' + eventKey + '/reservedBy').set(nick).then(() => {
-          db.ref('logs').push({staff: nick, event: event.name, time: new Date().toLocaleString()});
-          alert("Evento reservado com sucesso!");
-          loadEvents();
-          loadLogs();
-        });
+        db.ref('events/' + eventKey + '/reservedBy').set(nick);
+        const log = `${nick} reservou o evento "${event.name}"`;
+        db.ref('logs').push(log);
+        loadEvents();
       });
-    });
-  }
-
-  function resetAll() {
-    if(confirm("Tem certeza? Isso apagará todos os eventos.")) {
-      db.ref('events').remove().then(loadEvents);
     }
-  }
 
-  function resetLogs() {
-    if(confirm("Tem certeza? Isso apagará todos os logs de reserva.")) {
-      db.ref('logs').remove().then(loadLogs);
+    function deleteEvent() {
+      const id = document.getElementById('deleteId').value;
+      if(confirm("Tem certeza?")) db.ref('events/' + id).remove().then(loadEvents);
     }
-  }
 
-  function toggleGlobalBlock() {
-    db.ref('blockAll').once('value').then(snap => {
-      const val = snap.val();
-      db.ref('blockAll').set(!val);
-      alert("Reservas " + (!val ? "bloqueadas" : "liberadas") + ".");
-    });
-  }
+    function unlockEvent() {
+      const id = document.getElementById('unlockId').value;
+      db.ref('events/' + id + '/blocked').set(true);
+      loadEvents();
+    }
 
-  function loadLogs() {
-    const container = document.getElementById('logContainer');
-    container.innerHTML = '';
-    db.ref('logs').once('value').then(snapshot => {
-      const logs = snapshot.val() || {};
-      for(let key in logs) {
-        const log = logs[key];
-        const div = document.createElement('div');
-        div.className = 'log-entry';
-        div.textContent = `${log.staff} reservou "${log.event}" em ${log.time}`;
-        container.appendChild(div);
-      }
-    });
-  }
+    function editNick() {
+      const id = document.getElementById('editId').value;
+      const nick = document.getElementById('editNick').value;
+      db.ref('events/' + id + '/reservedBy').set(nick).then(() => alert("Nick atualizado"));
+    }
 
-  showUserPanel();
-  loadEvents();
-</script></body>
-  </html>
+    function resetAll() {
+      if(confirm("Apagar todos os eventos?")) db.ref('events').remove().then(loadEvents);
+    }
+
+    function resetReservations() {
+      db.ref('events').once('value').then(snapshot => {
+        const updates = {};
+        snapshot.forEach(child => {
+          updates[child.key + '/reservedBy'] = null;
+        });
+        db.ref('events').update(updates);
+        alert("Reservas resetadas!");
+        loadEvents();
+      });
+    }
+
+    function suggestEvent() {
+      const nick = document.getElementById('nickInput').value.trim();
+      const suggest = document.getElementById('suggestInput').value.trim();
+      if(nick && suggest) db.ref('suggestions').push(`${nick} sugeriu: ${suggest}`);
+      document.getElementById('suggestInput').value = '';
+    }
+
+    function loadLogs() {
+      db.ref('logs').once('value').then(snapshot => {
+        const logs = snapshot.val() || {};
+        const logDiv = document.getElementById('logs');
+        logDiv.innerHTML = '';
+        for(let key in logs) logDiv.innerHTML += `<div class='log'>${logs[key]}</div>`;
+      });
+    }
+
+    function loadSuggestions() {
+      db.ref('suggestions').once('value').then(snapshot => {
+        const suggestions = snapshot.val() || {};
+        const suggDiv = document.getElementById('suggestions');
+        suggDiv.innerHTML = '';
+        for(let key in suggestions) suggDiv.innerHTML += `<div class='log'>${suggestions[key]}</div>`;
+      });
+    }
+
+    function clearLogs() {
+      db.ref('logs').remove();
+      db.ref('suggestions').remove();
+      loadLogs();
+      loadSuggestions();
+    }
+
+    showUserPanel();
+    loadEvents();
+  </script></body>
+</html>
