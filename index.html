@@ -1,63 +1,127 @@
-<!DOCTYPE html><html>
+<!DOCTYPE html>
+<html>
 <head>
   <title>Painel de Eventos</title>
   <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
   <style>
-    body { font-family: Arial, sans-serif; max-width: 600px; margin: auto; background-color: #f4f0fa; color: #333; }
-    h1, h2 { color: #5e2b97; }
-    label, input, select, button, textarea { display: block; width: 100%; margin-bottom: 10px; }
-    input, select, textarea { padding: 8px; border-radius: 6px; border: 1px solid #ccc; }
-    button { padding: 10px; background-color: #5e2b97; color: #fff; border: none; border-radius: 6px; cursor: pointer; }
-    button:hover { background-color: #4a237a; }
-    #adminPanel, #loginPanel { display: none; }
-    .log { background: #eee; padding: 5px; border-radius: 5px; margin-bottom: 5px; }
+    body {
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      max-width: 600px;
+      margin: 40px auto;
+      background-color: #f9f8fc;
+      color: #2c2c2c;
+      padding: 20px;
+      border-radius: 12px;
+      box-shadow: 0 6px 20px rgba(100, 88, 204, 0.15);
+    }
+
+    h1, h2 {
+      color: #5e4b8b;
+      font-weight: 600;
+      margin-bottom: 16px;
+    }
+
+    label {
+      font-weight: 600;
+      color: #4a3d7f;
+    }
+
+    input, select {
+      width: 100%;
+      max-width: 320px;
+      padding: 10px 14px;
+      margin-top: 6px;
+      margin-bottom: 16px;
+      border: 1.8px solid #6e57d5;
+      border-radius: 8px;
+      font-size: 16px;
+      font-weight: 500;
+      color: #3a2f6b;
+      background-color: #f1efff;
+      transition: border-color 0.3s ease, background-color 0.3s ease;
+      box-sizing: border-box;
+    }
+
+    input:focus, select:focus {
+      outline: none;
+      border-color: #473e8a;
+      background-color: #e5e1ff;
+    }
+
+    button {
+      background-color: #6e57d5;
+      color: white;
+      font-weight: 600;
+      border: none;
+      border-radius: 8px;
+      padding: 12px 24px;
+      cursor: pointer;
+      font-size: 16px;
+      transition: background-color 0.3s ease;
+      margin-right: 10px;
+      margin-top: 8px;
+    }
+
+    button:hover {
+      background-color: #5e4b8b;
+    }
+
+    #adminPanel, #loginPanel, #userPanel {
+      transition: opacity 0.3s ease;
+    }
+
+    .hidden {
+      opacity: 0;
+      pointer-events: none;
+      height: 0;
+      overflow: hidden;
+    }
+
+    .visible {
+      opacity: 1;
+      pointer-events: auto;
+      height: auto;
+    }
   </style>
 </head>
 <body>
-  <h1>Painel de Eventos</h1>  <div id="userPanel">
+  <h1>Painel de Eventos</h1>
+  <div id="userPanel" class="visible">
     <h2>Reservar Evento</h2>
-    <label>Seu Nick: <input type="text" id="nickInput"></label>
-    <label>Eventos Disponíveis:</label>
-    <select id="eventSelect"></select>
-    <button onclick="reserveEvent()">Reservar</button><h3>Sugerir Evento</h3>
-<label>Nome do Evento: <input type="text" id="suggestInput"></label>
-<button onclick="suggestEvent()">Sugerir</button>
+    <label>Seu Nick:
+      <input type="text" id="nickInput" placeholder="Digite seu nick">
+    </label><br>
+    <label>Eventos Disponíveis:</label><br>
+    <select id="eventSelect"></select><br>
+    <button onclick="reserveEvent()">Reservar</button>
+    <button onclick="showLogin()">Login Admin</button>
+  </div>
 
-<button onclick="showLogin()">Login Admin</button>
-
-  </div>  <div id="loginPanel">
+  <div id="loginPanel" class="hidden">
     <h2>Login Admin</h2>
-    <label>Usuário: <input type="text" id="adminUser"></label>
-    <label>Senha: <input type="password" id="adminPass"></label>
+    <label>Usuário:
+      <input type="text" id="adminUser" placeholder="Digite o usuário">
+    </label><br>
+    <label>Senha:
+      <input type="password" id="adminPass" placeholder="Digite a senha">
+    </label><br>
     <button onclick="loginAdmin()">Entrar</button>
     <button onclick="showUserPanel()">Cancelar</button>
-  </div>  <div id="adminPanel">
+  </div>
+
+  <div id="adminPanel" class="hidden">
     <h2>Painel Admin</h2>
-    <label>Adicionar Evento: <input type="text" id="newEvent"></label>
-    <button onclick="addEvent()">Adicionar</button>
-    <button onclick="resetAll()">Resetar Tudo</button>
-    <button onclick="resetReservations()">Resetar Reservas</button><h3>Editar Reserva</h3>
-<label>ID do Evento: <input type="text" id="editId"></label>
-<label>Novo Nick: <input type="text" id="editNick"></label>
-<button onclick="editNick()">Alterar Nick</button>
+    <label>Adicionar Evento:
+      <input type="text" id="newEvent" placeholder="Nome do novo evento">
+    </label>
+    <button onclick="addEvent()">Adicionar</button><br>
+    <button onclick="resetAll()">Resetar Tudo</button><br><br>
+    <button onclick="logoutAdmin()">Logout</button>
+  </div>
 
-<h3>Gerenciar Eventos</h3>
-<label>ID para excluir: <input type="text" id="deleteId"></label>
-<button onclick="deleteEvent()">Excluir</button>
-<label>ID para desbloquear: <input type="text" id="unlockId"></label>
-<button onclick="unlockEvent()">Desbloquear Evento</button>
-
-<h3>Logs de Reservas</h3>
-<div id="logs"></div>
-
-<h3>Logs de Sugestões</h3>
-<div id="suggestions"></div>
-
-<button onclick="clearLogs()">Limpar Logs</button>
-<button onclick="logoutAdmin()">Logout</button>
-
-  </div>  <script>
+  <script>
+    // Firebase já configurado com seu projeto
     const firebaseConfig = {
       apiKey: "AIzaSyA7R1solmwmOAbHCs2kWpMgDH05s4H-5e8",
       authDomain: "paineleventos-eb268.firebaseapp.com",
@@ -69,27 +133,28 @@
     };
     firebase.initializeApp(firebaseConfig);
     const db = firebase.database();
+
     let isAdmin = false;
+
+    // Usuário e senha de administrador
     const adminUser = "admin";
-    const adminPass = "adm11";
+    const adminPass = "hugocom13@";
 
     function showLogin() {
-      document.getElementById('userPanel').style.display = 'none';
-      document.getElementById('loginPanel').style.display = 'block';
-      document.getElementById('adminPanel').style.display = 'none';
+      document.getElementById('userPanel').classList.replace('visible', 'hidden');
+      document.getElementById('loginPanel').classList.replace('hidden', 'visible');
+      document.getElementById('adminPanel').classList.replace('visible', 'hidden');
     }
     function showUserPanel() {
-      document.getElementById('userPanel').style.display = 'block';
-      document.getElementById('loginPanel').style.display = 'none';
-      document.getElementById('adminPanel').style.display = 'none';
+      document.getElementById('userPanel').classList.replace('hidden', 'visible');
+      document.getElementById('loginPanel').classList.replace('visible', 'hidden');
+      document.getElementById('adminPanel').classList.replace('visible', 'hidden');
     }
     function showAdminPanel() {
-      document.getElementById('userPanel').style.display = 'none';
-      document.getElementById('loginPanel').style.display = 'none';
-      document.getElementById('adminPanel').style.display = 'block';
+      document.getElementById('userPanel').classList.replace('visible', 'hidden');
+      document.getElementById('loginPanel').classList.replace('visible', 'hidden');
+      document.getElementById('adminPanel').classList.replace('hidden', 'visible');
       loadEvents();
-      loadLogs();
-      loadSuggestions();
     }
 
     function loginAdmin() {
@@ -98,8 +163,11 @@
       if(user === adminUser && pass === adminPass) {
         isAdmin = true;
         showAdminPanel();
-      } else alert("Usuário ou senha incorretos!");
+      } else {
+        alert("Usuário ou senha incorretos!");
+      }
     }
+
     function logoutAdmin() {
       isAdmin = false;
       showUserPanel();
@@ -107,115 +175,62 @@
 
     function loadEvents() {
       const select = document.getElementById('eventSelect');
+      const adminEvents = document.getElementById('newEvent');
       select.innerHTML = '';
+      adminEvents.value = '';
       db.ref('events').once('value').then(snapshot => {
         const events = snapshot.val() || {};
         for(let key in events) {
-          const event = events[key];
           const option = document.createElement('option');
           option.value = key;
-          option.text = event.name + (event.reservedBy ? ` (Reservado por ${event.reservedBy})` : '') + (event.blocked ? " [Bloqueado]" : "");
-          if (!event.blocked) select.appendChild(option);
+          option.text = events[key].name + (events[key].reservedBy ? " (Reservado por " + events[key].reservedBy + ")" : "");
+          select.appendChild(option);
         }
       });
     }
 
     function addEvent() {
+      if(!isAdmin) return alert("Você precisa estar logado como admin!");
       const name = document.getElementById('newEvent').value.trim();
-      if(!name) return alert("Digite um nome!");
-      db.ref('events').once('value').then(snapshot => {
-        const events = snapshot.val() || {};
-        for (let key in events) {
-          if(events[key].name.toLowerCase() === name.toLowerCase()) return alert("Evento já existe!");
-        }
-        const newKey = db.ref('events').push().key;
-        db.ref('events/' + newKey).set({name: name, reservedBy: null, blocked: false}).then(() => {
-          alert("Evento adicionado!");
-          loadEvents();
-        });
+      if(!name) return alert("Digite um nome de evento!");
+      const newKey = db.ref('events').push().key;
+      db.ref('events/' + newKey).set({name: name, reservedBy: null}).then(() => {
+        alert("Evento adicionado!");
+        loadEvents();
       });
     }
 
     function reserveEvent() {
       const nick = document.getElementById('nickInput').value.trim();
       const eventKey = document.getElementById('eventSelect').value;
-      if(!nick || !eventKey) return alert("Complete todos os campos!");
+      if(!nick) return alert("Digite seu nick!");
+      if(!eventKey) return alert("Selecione um evento!");
       db.ref('events/' + eventKey).once('value').then(snapshot => {
         const event = snapshot.val();
-        if(event.reservedBy) return alert("Evento já reservado!");
-        db.ref('events/' + eventKey + '/reservedBy').set(nick);
-        const log = `${nick} reservou o evento "${event.name}"`;
-        db.ref('logs').push(log);
-        loadEvents();
+        if(event.reservedBy) {
+          alert("Evento já reservado!");
+        } else {
+          db.ref('events/' + eventKey + '/reservedBy').set(nick).then(() => {
+            alert("Evento reservado com sucesso!");
+            loadEvents();
+          });
+        }
       });
-    }
-
-    function deleteEvent() {
-      const id = document.getElementById('deleteId').value;
-      if(confirm("Tem certeza?")) db.ref('events/' + id).remove().then(loadEvents);
-    }
-
-    function unlockEvent() {
-      const id = document.getElementById('unlockId').value;
-      db.ref('events/' + id + '/blocked').set(true);
-      loadEvents();
-    }
-
-    function editNick() {
-      const id = document.getElementById('editId').value;
-      const nick = document.getElementById('editNick').value;
-      db.ref('events/' + id + '/reservedBy').set(nick).then(() => alert("Nick atualizado"));
     }
 
     function resetAll() {
-      if(confirm("Apagar todos os eventos?")) db.ref('events').remove().then(loadEvents);
-    }
-
-    function resetReservations() {
-      db.ref('events').once('value').then(snapshot => {
-        const updates = {};
-        snapshot.forEach(child => {
-          updates[child.key + '/reservedBy'] = null;
+      if(!isAdmin) return alert("Você precisa estar logado como admin!");
+      if(confirm("Tem certeza que quer resetar tudo? Isso apagará todos os eventos e reservas.")) {
+        db.ref('events').remove().then(() => {
+          alert("Reset realizado com sucesso!");
+          loadEvents();
         });
-        db.ref('events').update(updates);
-        alert("Reservas resetadas!");
-        loadEvents();
-      });
+      }
     }
 
-    function suggestEvent() {
-      const nick = document.getElementById('nickInput').value.trim();
-      const suggest = document.getElementById('suggestInput').value.trim();
-      if(nick && suggest) db.ref('suggestions').push(`${nick} sugeriu: ${suggest}`);
-      document.getElementById('suggestInput').value = '';
-    }
-
-    function loadLogs() {
-      db.ref('logs').once('value').then(snapshot => {
-        const logs = snapshot.val() || {};
-        const logDiv = document.getElementById('logs');
-        logDiv.innerHTML = '';
-        for(let key in logs) logDiv.innerHTML += `<div class='log'>${logs[key]}</div>`;
-      });
-    }
-
-    function loadSuggestions() {
-      db.ref('suggestions').once('value').then(snapshot => {
-        const suggestions = snapshot.val() || {};
-        const suggDiv = document.getElementById('suggestions');
-        suggDiv.innerHTML = '';
-        for(let key in suggestions) suggDiv.innerHTML += `<div class='log'>${suggestions[key]}</div>`;
-      });
-    }
-
-    function clearLogs() {
-      db.ref('logs').remove();
-      db.ref('suggestions').remove();
-      loadLogs();
-      loadSuggestions();
-    }
-
+    // Inicialização
     showUserPanel();
     loadEvents();
-  </script></body>
+  </script>
+</body>
 </html>
