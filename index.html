@@ -1,226 +1,134 @@
 <!DOCTYPE html>
-<html>
+<html lang="pt-BR">
 <head>
-  <title>Painel de Eventos</title>
-  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Sistema de Reservas</title>
   <style>
-    body { font-family: Arial, sans-serif; max-width: 600px; margin: auto; background-color: #f3f0f7; color: #333; }
-    h1, h2 { color: #6a0dad; }
-    input, select, button { margin: 5px 0; padding: 8px; border: 1px solid #ccc; border-radius: 5px; width: 100%; }
-    button { background-color: #6a0dad; color: white; border: none; cursor: pointer; }
-    button:hover { background-color: #581b9a; }
-    #adminPanel, #loginPanel { display: none; }
-    .log-entry { font-size: 0.9em; border-bottom: 1px solid #ccc; padding: 5px 0; }
+    body {
+      font-family: Arial, sans-serif;
+      background-color: #121212;
+      color: #ffffff;
+      padding: 20px;
+    }
+
+    h2 {
+      color: #00bfff;
+    }
+
+    .container {
+      margin-bottom: 30px;
+    }
+
+    input, select, button {
+      padding: 10px;
+      margin: 5px;
+      border-radius: 5px;
+      border: none;
+    }
+
+    button {
+      background-color: #00bfff;
+      color: white;
+      cursor: pointer;
+    }
+
+    button:hover {
+      background-color: #0099cc;
+    }
+
+    .logs {
+      background-color: #1f1f1f;
+      color: #00ff00;
+      padding: 12px;
+      border-radius: 6px;
+      margin-top: 20px;
+      font-family: monospace;
+      font-size: 14px;
+      white-space: pre-wrap;
+      word-break: break-word;
+      overflow-wrap: break-word;
+    }
   </style>
 </head>
 <body>
-<h1>Painel de Eventos</h1>
-<div id="userPanel">
-  <h2>Reservar Evento</h2>
-  <label>Seu Nick: <input type="text" id="nickInput"></label><br><br>
-  <label>Eventos Disponíveis:</label><br>
-  <select id="eventSelect"></select><br><br>
-  <button onclick="reserveEvent()">Reservar</button>
-  <button onclick="showLogin()">Login Admin</button>
-</div>
 
-<div id="loginPanel">
-  <h2>Login Admin</h2>
-  <label>Usuário: <input type="text" id="adminUser"></label><br><br>
-  <label>Senha: <input type="password" id="adminPass"></label><br><br>
-  <button onclick="loginAdmin()">Entrar</button>
-  <button onclick="showUserPanel()">Cancelar</button>
-</div>
+  <div class="container">
+    <h2>Reservar Evento</h2>
+    <input type="text" id="evento" placeholder="Nome do Evento">
+    <input type="text" id="responsavel" placeholder="Responsável">
+    <button onclick="reservarEvento()">Reservar</button>
+  </div>
 
-<div id="adminPanel">
-  <h2>Painel Admin</h2>
-  <label>Adicionar Evento: <input type="text" id="newEvent"></label>
-  <button onclick="addEvent()">Adicionar</button><br><br>
+  <div class="container">
+    <h2>Reservar Evento Extra</h2>
+    <select id="eventoExtraSelect"></select>
+    <input type="text" id="responsavelExtra" placeholder="Responsável">
+    <button onclick="reservarEventoExtra()">Reservar Extra</button>
+  </div>
 
-  <label>Eventos:</label>
-  <select id="eventAdminSelect"></select><br>
-  <button onclick="removeEvent()">Remover Evento</button>
-  <button onclick="unreserveEvent()">Retirar Reserva</button>
-  <button onclick="renameEvent()">Renomear Evento</button>
-  <button onclick="toggleBlockEvent()">Bloquear/Desbloquear Evento</button><br><br>
+  <div class="container">
+    <h2>Painel Admin</h2>
+    <input type="text" id="novoEventoExtra" placeholder="Novo Evento Extra">
+    <button onclick="adicionarEventoExtra()">Adicionar Evento Extra</button>
+  </div>
 
-  <button onclick="resetAll()">Resetar Tudo</button>
-  <button onclick="resetLogs()">Resetar Logs</button>
-  <button onclick="toggleGlobalBlock()">Bloquear/Desbloquear Reservas</button><br><br>
+  <div class="container">
+    <h2>Logs de Reservas</h2>
+    <div id="log" class="logs"></div>
+  </div>
 
-  <button onclick="logoutAdmin()">Logout</button>
+  <div class="container">
+    <h2>Logs de Reservas Extras</h2>
+    <div id="logExtra" class="logs"></div>
+  </div>
 
-  <h3>Logs de Reservas</h3>
-  <div id="logContainer"></div>
-</div>
+  <script>
+    const eventosExtras = [];
+    const log = document.getElementById('log');
+    const logExtra = document.getElementById('logExtra');
+    const eventoExtraSelect = document.getElementById('eventoExtraSelect');
 
-<script>
-  const firebaseConfig = {
-    apiKey: "AIzaSyA7R1solmwmOAbHCs2kWpMgDH05s4H-5e8",
-    authDomain: "paineleventos-eb268.firebaseapp.com",
-    databaseURL: "https://paineleventos-eb268-default-rtdb.firebaseio.com",
-    projectId: "paineleventos-eb268",
-    storageBucket: "paineleventos-eb268.appspot.com",
-    messagingSenderId: "1058039759873",
-    appId: "1:1058039759873:web:2b504e42531517be60ec00"
-  };
-  firebase.initializeApp(firebaseConfig);
-  const db = firebase.database();
-
-  let isAdmin = false;
-  const adminUser = "admin";
-  const adminPass = "adm11";
-
-  function showLogin() {
-    document.getElementById('userPanel').style.display = 'none';
-    document.getElementById('loginPanel').style.display = 'block';
-    document.getElementById('adminPanel').style.display = 'none';
-  }
-
-  function showUserPanel() {
-    document.getElementById('userPanel').style.display = 'block';
-    document.getElementById('loginPanel').style.display = 'none';
-    document.getElementById('adminPanel').style.display = 'none';
-  }
-
-  function showAdminPanel() {
-    document.getElementById('userPanel').style.display = 'none';
-    document.getElementById('loginPanel').style.display = 'none';
-    document.getElementById('adminPanel').style.display = 'block';
-    loadEvents();
-    loadLogs();
-  }
-
-  function loginAdmin() {
-    const user = document.getElementById('adminUser').value;
-    const pass = document.getElementById('adminPass').value;
-    if(user === adminUser && pass === adminPass) {
-      isAdmin = true;
-      showAdminPanel();
-    } else {
-      alert("Usuário ou senha incorretos!");
-    }
-  }
-
-  function logoutAdmin() {
-    isAdmin = false;
-    showUserPanel();
-  }
-
-  function loadEvents() {
-    const select = document.getElementById('eventSelect');
-    const adminSelect = document.getElementById('eventAdminSelect');
-    select.innerHTML = '';
-    adminSelect.innerHTML = '';
-    db.ref('events').once('value').then(snapshot => {
-      const events = snapshot.val() || {};
-      for(let key in events) {
-        const e = events[key];
-        const text = e.name + (e.reservedBy ? ` (Reservado por ${e.reservedBy})` : '') + (e.blocked ? " [BLOQUEADO]" : "");
-        const option1 = new Option(text, key);
-        const option2 = new Option(text, key);
-        select.appendChild(option1);
-        adminSelect.appendChild(option2);
+    function reservarEvento() {
+      const evento = document.getElementById('evento').value.trim();
+      const responsavel = document.getElementById('responsavel').value.trim();
+      if (evento && responsavel) {
+        const texto = `[${new Date().toLocaleString()}] Evento reservado: ${evento} | Responsável: ${responsavel}`;
+        log.innerText += texto + '\n';
+        document.getElementById('evento').value = '';
+        document.getElementById('responsavel').value = '';
+      } else {
+        alert('Preencha todos os campos.');
       }
-    });
-  }
-
-  function addEvent() {
-    if(!isAdmin) return;
-    const name = document.getElementById('newEvent').value.trim();
-    if(!name) return alert("Digite um nome de evento!");
-    const newKey = db.ref('events').push().key;
-    db.ref('events/' + newKey).set({name, reservedBy: null, blocked: false}).then(() => {
-      alert("Evento adicionado!");
-      loadEvents();
-    });
-  }
-
-  function removeEvent() {
-    const key = document.getElementById('eventAdminSelect').value;
-    db.ref('events/' + key).remove().then(loadEvents);
-  }
-
-  function unreserveEvent() {
-    const key = document.getElementById('eventAdminSelect').value;
-    db.ref('events/' + key + '/reservedBy').remove().then(loadEvents);
-  }
-
-  function renameEvent() {
-    const key = document.getElementById('eventAdminSelect').value;
-    const newName = prompt("Novo nome do evento:");
-    if(newName) db.ref('events/' + key + '/name').set(newName).then(loadEvents);
-  }
-
-  function toggleBlockEvent() {
-    const key = document.getElementById('eventAdminSelect').value;
-    db.ref('events/' + key).once('value').then(snap => {
-      const val = snap.val();
-      db.ref('events/' + key + '/blocked').set(!val.blocked).then(loadEvents);
-    });
-  }
-
-  function reserveEvent() {
-    const nick = document.getElementById('nickInput').value.trim();
-    const eventKey = document.getElementById('eventSelect').value;
-    if(!nick || !eventKey) return alert("Preencha os campos corretamente!");
-
-    db.ref('blockAll').once('value').then(globalSnap => {
-      if(globalSnap.val()) return alert("Reservas estão bloqueadas no momento!");
-
-      db.ref('events/' + eventKey).once('value').then(snapshot => {
-        const event = snapshot.val();
-        if(event.reservedBy) return alert("Evento já reservado!");
-        if(event.blocked) return alert("Este evento está bloqueado!");
-
-        db.ref('events/' + eventKey + '/reservedBy').set(nick).then(() => {
-          db.ref('logs').push({staff: nick, event: event.name, time: new Date().toLocaleString()});
-          alert("Evento reservado com sucesso!");
-          loadEvents();
-          loadLogs();
-        });
-      });
-    });
-  }
-
-  function resetAll() {
-    if(confirm("Tem certeza? Isso apagará todos os eventos.")) {
-      db.ref('events').remove().then(loadEvents);
     }
-  }
 
-  function resetLogs() {
-    if(confirm("Tem certeza? Isso apagará todos os logs de reserva.")) {
-      db.ref('logs').remove().then(loadLogs);
-    }
-  }
-
-  function toggleGlobalBlock() {
-    db.ref('blockAll').once('value').then(snap => {
-      const val = snap.val();
-      db.ref('blockAll').set(!val);
-      alert("Reservas " + (!val ? "bloqueadas" : "liberadas") + ".");
-    });
-  }
-
-  function loadLogs() {
-    const container = document.getElementById('logContainer');
-    container.innerHTML = '';
-    db.ref('logs').once('value').then(snapshot => {
-      const logs = snapshot.val() || {};
-      for(let key in logs) {
-        const log = logs[key];
-        const div = document.createElement('div');
-        div.className = 'log-entry';
-        div.textContent = `${log.staff} reservou "${log.event}" em ${log.time}`;
-        container.appendChild(div);
+    function reservarEventoExtra() {
+      const evento = eventoExtraSelect.value;
+      const responsavel = document.getElementById('responsavelExtra').value.trim();
+      if (evento && responsavel) {
+        const texto = `[${new Date().toLocaleString()}] Evento extra reservado: ${evento} | Responsável: ${responsavel}`;
+        logExtra.innerText += texto + '\n';
+        document.getElementById('responsavelExtra').value = '';
+      } else {
+        alert('Preencha todos os campos.');
       }
-    });
-  }
+    }
 
-  showUserPanel();
-  loadEvents();
-</script>
+    function adicionarEventoExtra() {
+      const novoEvento = document.getElementById('novoEventoExtra').value.trim();
+      if (novoEvento) {
+        eventosExtras.push(novoEvento);
+        const option = document.createElement('option');
+        option.text = novoEvento;
+        option.value = novoEvento;
+        eventoExtraSelect.add(option);
+        document.getElementById('novoEventoExtra').value = '';
+        alert(`Evento extra "${novoEvento}" adicionado com sucesso.`);
+      } else {
+        alert('Digite o nome do evento extra.');
+      }
+    }
+  </script>
+
 </body>
 </html>
