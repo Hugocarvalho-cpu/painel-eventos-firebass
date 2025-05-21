@@ -12,7 +12,6 @@
     button:hover { background-color: #581b9a; }
     #adminPanel, #loginPanel { display: none; }
     .log-entry { font-size: 0.9em; border-bottom: 1px solid #ccc; padding: 5px 0; }
-    hr { border: none; border-top: 1px solid #ccc; margin: 20px 0; }
   </style>
 </head>
 <body>
@@ -23,15 +22,6 @@
   <label>Eventos Disponíveis:</label><br>
   <select id="eventSelect"></select><br><br>
   <button onclick="reserveEvent()">Reservar</button>
-
-  <hr>
-
-  <h2>Reservar Evento Extra</h2>
-  <label>Eventos Extras Disponíveis:</label><br>
-  <select id="extraEventSelect"></select><br><br>
-  <button onclick="reserveExtraEvent()">Reservar Extra</button>
-
-  <hr>
   <button onclick="showLogin()">Login Admin</button>
 </div>
 
@@ -45,24 +35,15 @@
 
 <div id="adminPanel">
   <h2>Painel Admin</h2>
-
-  <h3>Eventos Normais</h3>
   <label>Adicionar Evento: <input type="text" id="newEvent"></label>
   <button onclick="addEvent()">Adicionar</button><br><br>
+
+  <label>Eventos:</label>
   <select id="eventAdminSelect"></select><br>
   <button onclick="removeEvent()">Remover Evento</button>
   <button onclick="unreserveEvent()">Retirar Reserva</button>
   <button onclick="renameEvent()">Renomear Evento</button>
   <button onclick="toggleBlockEvent()">Bloquear/Desbloquear Evento</button><br><br>
-
-  <h3>Eventos Extras</h3>
-  <label>Adicionar Extra: <input type="text" id="newExtraEvent"></label>
-  <button onclick="addExtraEvent()">Adicionar</button><br><br>
-  <select id="extraEventAdminSelect"></select><br>
-  <button onclick="removeExtraEvent()">Remover Extra</button>
-  <button onclick="unreserveExtraEvent()">Retirar Reserva</button>
-  <button onclick="renameExtraEvent()">Renomear Extra</button>
-  <button onclick="toggleBlockExtraEvent()">Bloquear/Desbloquear Extra</button><br><br>
 
   <button onclick="resetAll()">Resetar Tudo</button>
   <button onclick="resetLogs()">Resetar Logs</button>
@@ -72,9 +53,6 @@
 
   <h3>Logs de Reservas</h3>
   <div id="logContainer"></div>
-
-  <h3>Logs de Reservas Extras</h3>
-  <div id="extraLogContainer"></div>
 </div>
 
 <script>
@@ -111,9 +89,7 @@
     document.getElementById('loginPanel').style.display = 'none';
     document.getElementById('adminPanel').style.display = 'block';
     loadEvents();
-    loadExtraEvents();
     loadLogs();
-    loadExtraLogs();
   }
 
   function loginAdmin() {
@@ -150,75 +126,14 @@
     });
   }
 
-  function loadExtraEvents() {
-    const select = document.getElementById('extraEventSelect');
-    const adminSelect = document.getElementById('extraEventAdminSelect');
-    select.innerHTML = '';
-    adminSelect.innerHTML = '';
-    db.ref('extraEvents').once('value').then(snapshot => {
-      const events = snapshot.val() || {};
-      for(let key in events) {
-        const e = events[key];
-        const text = e.name + (e.reservedBy ? ` (Reservado por ${e.reservedBy})` : '') + (e.blocked ? " [BLOQUEADO]" : "");
-        const option1 = new Option(text, key);
-        const option2 = new Option(text, key);
-        select.appendChild(option1);
-        adminSelect.appendChild(option2);
-      }
-    });
-  }
-
   function addEvent() {
+    if(!isAdmin) return;
     const name = document.getElementById('newEvent').value.trim();
     if(!name) return alert("Digite um nome de evento!");
     const newKey = db.ref('events').push().key;
-    db.ref('events/' + newKey).set({name, reservedBy: null, blocked: false}).then(loadEvents);
-  }
-
-  function addExtraEvent() {
-    const name = document.getElementById('newExtraEvent').value.trim();
-    if(!name) return alert("Digite um nome de evento extra!");
-    const newKey = db.ref('extraEvents').push().key;
-    db.ref('extraEvents/' + newKey).set({name, reservedBy: null, blocked: false}).then(loadExtraEvents);
-  }
-
-  function reserveEvent() {
-    const nick = document.getElementById('nickInput').value.trim();
-    const eventKey = document.getElementById('eventSelect').value;
-    if(!nick || !eventKey) return alert("Preencha os campos corretamente!");
-    db.ref('blockAll').once('value').then(globalSnap => {
-      if(globalSnap.val()) return alert("Reservas estão bloqueadas no momento!");
-      db.ref('events/' + eventKey).once('value').then(snapshot => {
-        const event = snapshot.val();
-        if(event.reservedBy) return alert("Evento já reservado!");
-        if(event.blocked) return alert("Este evento está bloqueado!");
-        db.ref('events/' + eventKey + '/reservedBy').set(nick).then(() => {
-          db.ref('logs').push({staff: nick, event: event.name, time: new Date().toLocaleString()});
-          alert("Evento reservado com sucesso!");
-          loadEvents();
-          loadLogs();
-        });
-      });
-    });
-  }
-
-  function reserveExtraEvent() {
-    const nick = document.getElementById('nickInput').value.trim();
-    const eventKey = document.getElementById('extraEventSelect').value;
-    if(!nick || !eventKey) return alert("Preencha os campos corretamente!");
-    db.ref('blockAll').once('value').then(globalSnap => {
-      if(globalSnap.val()) return alert("Reservas estão bloqueadas no momento!");
-      db.ref('extraEvents/' + eventKey).once('value').then(snapshot => {
-        const event = snapshot.val();
-        if(event.reservedBy) return alert("Evento extra já reservado!");
-        if(event.blocked) return alert("Este evento extra está bloqueado!");
-        db.ref('extraEvents/' + eventKey + '/reservedBy').set(nick).then(() => {
-          db.ref('extraLogs').push({staff: nick, event: event.name, time: new Date().toLocaleString()});
-          alert("Evento extra reservado com sucesso!");
-          loadExtraEvents();
-          loadExtraLogs();
-        });
-      });
+    db.ref('events/' + newKey).set({name, reservedBy: null, blocked: false}).then(() => {
+      alert("Evento adicionado!");
+      loadEvents();
     });
   }
 
@@ -227,31 +142,15 @@
     db.ref('events/' + key).remove().then(loadEvents);
   }
 
-  function removeExtraEvent() {
-    const key = document.getElementById('extraEventAdminSelect').value;
-    db.ref('extraEvents/' + key).remove().then(loadExtraEvents);
-  }
-
   function unreserveEvent() {
     const key = document.getElementById('eventAdminSelect').value;
     db.ref('events/' + key + '/reservedBy').remove().then(loadEvents);
-  }
-
-  function unreserveExtraEvent() {
-    const key = document.getElementById('extraEventAdminSelect').value;
-    db.ref('extraEvents/' + key + '/reservedBy').remove().then(loadExtraEvents);
   }
 
   function renameEvent() {
     const key = document.getElementById('eventAdminSelect').value;
     const newName = prompt("Novo nome do evento:");
     if(newName) db.ref('events/' + key + '/name').set(newName).then(loadEvents);
-  }
-
-  function renameExtraEvent() {
-    const key = document.getElementById('extraEventAdminSelect').value;
-    const newName = prompt("Novo nome do evento extra:");
-    if(newName) db.ref('extraEvents/' + key + '/name').set(newName).then(loadExtraEvents);
   }
 
   function toggleBlockEvent() {
@@ -262,25 +161,38 @@
     });
   }
 
-  function toggleBlockExtraEvent() {
-    const key = document.getElementById('extraEventAdminSelect').value;
-    db.ref('extraEvents/' + key).once('value').then(snap => {
-      const val = snap.val();
-      db.ref('extraEvents/' + key + '/blocked').set(!val.blocked).then(loadExtraEvents);
+  function reserveEvent() {
+    const nick = document.getElementById('nickInput').value.trim();
+    const eventKey = document.getElementById('eventSelect').value;
+    if(!nick || !eventKey) return alert("Preencha os campos corretamente!");
+
+    db.ref('blockAll').once('value').then(globalSnap => {
+      if(globalSnap.val()) return alert("Reservas estão bloqueadas no momento!");
+
+      db.ref('events/' + eventKey).once('value').then(snapshot => {
+        const event = snapshot.val();
+        if(event.reservedBy) return alert("Evento já reservado!");
+        if(event.blocked) return alert("Este evento está bloqueado!");
+
+        db.ref('events/' + eventKey + '/reservedBy').set(nick).then(() => {
+          db.ref('logs').push({staff: nick, event: event.name, time: new Date().toLocaleString()});
+          alert("Evento reservado com sucesso!");
+          loadEvents();
+          loadLogs();
+        });
+      });
     });
   }
 
   function resetAll() {
-    if(confirm("Tem certeza? Isso apagará todos os eventos e extras.")) {
+    if(confirm("Tem certeza? Isso apagará todos os eventos.")) {
       db.ref('events').remove().then(loadEvents);
-      db.ref('extraEvents').remove().then(loadExtraEvents);
     }
   }
 
   function resetLogs() {
-    if(confirm("Tem certeza? Isso apagará todos os logs.")) {
+    if(confirm("Tem certeza? Isso apagará todos os logs de reserva.")) {
       db.ref('logs').remove().then(loadLogs);
-      db.ref('extraLogs').remove().then(loadExtraLogs);
     }
   }
 
@@ -307,24 +219,8 @@
     });
   }
 
-  function loadExtraLogs() {
-    const container = document.getElementById('extraLogContainer');
-    container.innerHTML = '';
-    db.ref('extraLogs').once('value').then(snapshot => {
-      const logs = snapshot.val() || {};
-      for(let key in logs) {
-        const log = logs[key];
-        const div = document.createElement('div');
-        div.className = 'log-entry';
-        div.textContent = `${log.staff} reservou o extra "${log.event}" em ${log.time}`;
-        container.appendChild(div);
-      }
-    });
-  }
-
   showUserPanel();
   loadEvents();
-  loadExtraEvents();
 </script>
 </body>
   </html>
