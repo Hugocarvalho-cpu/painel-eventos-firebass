@@ -7,7 +7,7 @@
   <style>
     body { font-family: Arial, sans-serif; max-width: 600px; margin: auto; background-color: #f3f0f7; color: #333; }
     h1, h2 { color: #6a0dad; }
-    input, select, button, textarea { margin: 5px 0; padding: 8px; border: 1px solid #ccc; border-radius: 5px; width: 100%; }
+    input, select, button { margin: 5px 0; padding: 8px; border: 1px solid #ccc; border-radius: 5px; width: 100%; }
     button { background-color: #6a0dad; color: white; border: none; cursor: pointer; }
     button:hover { background-color: #581b9a; }
     #adminPanel, #loginPanel { display: none; }
@@ -35,8 +35,7 @@
 
 <div id="adminPanel">
   <h2>Painel Admin</h2>
-  <label>Adicionar Evento (um por linha):</label><br>
-  <textarea id="newEvent" rows="4" placeholder="Digite os nomes dos eventos separados por linha"></textarea>
+  <label>Adicionar Evento: <input type="text" id="newEvent"></label>
   <button onclick="addEvent()">Adicionar</button><br><br>
 
   <label>Eventos:</label>
@@ -83,7 +82,6 @@
     document.getElementById('userPanel').style.display = 'block';
     document.getElementById('loginPanel').style.display = 'none';
     document.getElementById('adminPanel').style.display = 'none';
-    loadEvents();
   }
 
   function showAdminPanel() {
@@ -128,21 +126,90 @@
     });
   }
 
-  function reserveEvent() {
-    const nick = document.getElementById('nickInput').value.trim();
-    const key = document.getElementById('eventSelect').value;
-    if (!nick || !key) return alert("Preencha seu nick e selecione um evento.");
-
-    db.ref('events/' + key).once('value').then(snapshot => {
-      const event = snapshot.val();
-      if (!event) return alert("Evento inválido.");
-      if (event.reservedBy) return alert("Esse evento já está reservado.");
-      if (event.blocked) return alert("Esse evento está bloqueado para reservas.");
-
-      db.ref('events/' + key + '/reservedBy').set(nick);
-      db.ref('logs').push({ staff: nick, event: event.name, timestamp: Date.now() });
-      alert("Evento reservado com sucesso!");
+  function addEvent() {
+    if(!isAdmin) return;
+    const name = document.getElementById('newEvent').value.trim();
+    if(!name) return alert("Digite um nome de evento!");
+    const newKey = db.ref('events').push().key;
+    db.ref('events/' + newKey).set({name, reservedBy: null, blocked: false}).then(() => {
+      alert("Evento adicionado!");
       loadEvents();
+    });
+  }
+
+  function removeEvent() {
+    const key = document.getElementById('eventAdminSelect').value;
+    db.ref('events/' + key).remove().then(loadEvents);
+  }
+
+  function unreserveEvent() {
+    const key = document.getElementById('eventAdminSelect').value;
+    db.ref('events/' + key + '/reservedBy').remove().then(loadEvents);
+  }
+
+  function renameEvent() {
+    const key = document.getElementById('eventAdminSelect').value;
+    const newName = prompt("Novo nome do evento:");
+    if(newName) db.ref('events/' + key + '/name').set(newName).then(loadEvents);
+  }
+
+  function toggleBlockEvent() {
+    const key = document.getElementById('eventAdminSelect').value;
+    db.ref('events/' + key).once('value').then(snap => {
+      const val = snap.val();
+      db.ref('events/' + key + '/blocked').set(!val.blocked).then(loadEvents);
+    });
+  }
+
+  function reserveEvent() {
+  const nick = document.getElementById('nickInput').value.trim();
+  const eventKey = document.getElementById('eventSelect').value;
+  if (!nick || !eventKey) return alert("Preencha os campos corretamente!");
+
+  db.ref('blockAll').once('value').then(globalSnap => {
+    if (globalSnap.val()) return alert("Reservas estão bloqueadas no momento!");
+
+    // Verificar quantas reservas esse nick já tem
+    db.ref('events').once('value').then(eventsSnap => {
+      const events = eventsSnap.val() || {};
+      const userReservations = Object.values(events).filter(e => e.reservedBy === nick);
+      
+      if (userReservations.length >= 4) {
+        return alert("Você já atingiu o limite de 4 reservas!");
+      }
+
+      const event = events[eventKey];
+      if (!event) return alert("Evento inválido.");
+      if (event.reservedBy) return alert("Evento já reservado!");
+      if (event.blocked) return alert("Este evento está bloqueado!");
+
+      db.ref('events/' + eventKey + '/reservedBy').set(nick).then(() => {
+        db.ref('logs').push({staff: nick, event: event.name, time: new Date().toLocaleString()});
+        alert("Evento reservado com sucesso!");
+        loadEvents();
+        loadLogs();
+      });
+    });
+  });
+}
+
+  function resetAll() {
+    if(confirm("Tem certeza? Isso apagará todos os eventos.")) {
+      db.ref('events').remove().then(loadEvents);
+    }
+  }
+
+  function resetLogs() {
+    if(confirm("Tem certeza? Isso apagará todos os logs de reserva.")) {
+      db.ref('logs').remove().then(loadLogs);
+    }
+  }
+
+  function toggleGlobalBlock() {
+    db.ref('blockAll').once('value').then(snap => {
+      const val = snap.val();
+      db.ref('blockAll').set(!val);
+      alert("Reservas " + (!val ? "bloqueadas" : "liberadas") + ".");
     });
   }
 
@@ -151,57 +218,18 @@
     container.innerHTML = '';
     db.ref('logs').once('value').then(snapshot => {
       const logs = snapshot.val() || {};
-      const sortedLogs = Object.values(logs).sort((a, b) => b.timestamp - a.timestamp);
-      for (const log of sortedLogs) {
+      for(let key in logs) {
+        const log = logs[key];
         const div = document.createElement('div');
         div.className = 'log-entry';
-        const date = new Date(log.timestamp).toLocaleString();
-        div.textContent = `${log.staff} reservou "${log.event}" em ${date}`;
+        div.textContent = `${log.staff} reservou "${log.event}" em ${log.time}`;
         container.appendChild(div);
       }
     });
   }
 
-  function toggleBlockEvent() {
-    const key = document.getElementById('eventAdminSelect').value;
-    if (!key) return alert("Selecione um evento.");
-
-    db.ref('events/' + key).once('value').then(snapshot => {
-      const event = snapshot.val();
-      if (!event) return alert("Evento inválido.");
-
-      const newBlocked = !event.blocked;
-      db.ref('events/' + key + '/blocked').set(newBlocked).then(() => {
-        alert(newBlocked ? "Evento bloqueado." : "Evento desbloqueado.");
-        loadEvents();
-      });
-    });
-  }
-
-  function resetAll() {
-    if (!confirm("Tem certeza que deseja resetar todos os eventos?")) return;
-    db.ref('events').remove().then(loadEvents);
-    db.ref('logs').remove().then(loadLogs);
-  }
-
-  function resetLogs() {
-    if (!confirm("Tem certeza que deseja apagar todos os logs?")) return;
-    db.ref('logs').remove().then(loadLogs);
-  }
-
-  function toggleGlobalBlock() {
-    db.ref('globalBlocked').once('value').then(snapshot => {
-      const blocked = snapshot.val();
-      db.ref('globalBlocked').set(!blocked).then(() => {
-        alert(!blocked ? "Reservas bloqueadas globalmente." : "Reservas desbloqueadas.");
-      });
-    });
-  }
-
-  // Ao carregar a página, mostrar painel de usuário e carregar eventos
-  window.onload = () => {
-    showUserPanel();
-  };
+  showUserPanel();
+  loadEvents();
 </script>
 </body>
 </html>
