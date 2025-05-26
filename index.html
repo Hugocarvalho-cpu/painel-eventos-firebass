@@ -162,27 +162,36 @@
   }
 
   function reserveEvent() {
-    const nick = document.getElementById('nickInput').value.trim();
-    const eventKey = document.getElementById('eventSelect').value;
-    if(!nick || !eventKey) return alert("Preencha os campos corretamente!");
+  const nick = document.getElementById('nickInput').value.trim();
+  const eventKey = document.getElementById('eventSelect').value;
+  if (!nick || !eventKey) return alert("Preencha os campos corretamente!");
 
-    db.ref('blockAll').once('value').then(globalSnap => {
-      if(globalSnap.val()) return alert("Reservas estão bloqueadas no momento!");
+  db.ref('blockAll').once('value').then(globalSnap => {
+    if (globalSnap.val()) return alert("Reservas estão bloqueadas no momento!");
 
-      db.ref('events/' + eventKey).once('value').then(snapshot => {
-        const event = snapshot.val();
-        if(event.reservedBy) return alert("Evento já reservado!");
-        if(event.blocked) return alert("Este evento está bloqueado!");
+    // Verificar quantas reservas esse nick já tem
+    db.ref('events').once('value').then(eventsSnap => {
+      const events = eventsSnap.val() || {};
+      const userReservations = Object.values(events).filter(e => e.reservedBy === nick);
+      
+      if (userReservations.length >= 4) {
+        return alert("Você já atingiu o limite de 4 reservas!");
+      }
 
-        db.ref('events/' + eventKey + '/reservedBy').set(nick).then(() => {
-          db.ref('logs').push({staff: nick, event: event.name, time: new Date().toLocaleString()});
-          alert("Evento reservado com sucesso!");
-          loadEvents();
-          loadLogs();
-        });
+      const event = events[eventKey];
+      if (!event) return alert("Evento inválido.");
+      if (event.reservedBy) return alert("Evento já reservado!");
+      if (event.blocked) return alert("Este evento está bloqueado!");
+
+      db.ref('events/' + eventKey + '/reservedBy').set(nick).then(() => {
+        db.ref('logs').push({staff: nick, event: event.name, time: new Date().toLocaleString()});
+        alert("Evento reservado com sucesso!");
+        loadEvents();
+        loadLogs();
       });
     });
-  }
+  });
+}
 
   function resetAll() {
     if(confirm("Tem certeza? Isso apagará todos os eventos.")) {
@@ -223,4 +232,4 @@
   loadEvents();
 </script>
 </body>
-</html>
+  </html>
